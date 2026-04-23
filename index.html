@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Media Vault</title>
+  <style>
+    :root {
+      --bg: #081018;
+      --bg2: #0c1622;
+      --panel: rgba(10, 17, 28, 0.82);
+      --line: rgba(180, 203, 255, 0.1);
+      --line-strong: rgba(180, 203, 255, 0.2);
+      --text: #eef3fb;
+      --muted: #93a3be;
+      --accent: #9fe3d8;
+      --accent-2: #9cbcff;
+      --warm: #ffd58f;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+      --radius: 24px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(156, 188, 255, 0.12), transparent 24%),
+        radial-gradient(circle at bottom left, rgba(159, 227, 216, 0.1), transparent 26%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 50%, #070d14 100%);
+    }
+
+    body {
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px 1fr 320px;
+      gap: 16px;
+      padding: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+      animation: riseIn 360ms ease;
+    }
+
+    .sidebar,
+    .rightbar {
+      position: sticky;
+      top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 44px);
+      line-height: 0.95;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .brand p,
+    .note,
+    .meta-value,
+    .empty {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.8px;
+      color: var(--accent);
+    }
+
+    .main {
+      min-width: 0;
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero {
+      padding: 20px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      overflow: hidden;
+    }
+
+    .hero h2 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 36px);
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 760px;
+      line-height: 1.5;
+    }
+
+    .hero h2,
+    .hero p,
+    .actions {
+      animation: fadeUp 420ms ease;
+    }
+
+    .actions,
+    .chips,
+    .viewer-actions,
+    .viewer-nav,
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn,
+    .folder-btn,
+    .chip {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      padding: 12px 15px;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .btn:hover,
+    .folder-btn:hover,
+    .chip:hover,
+    .tile:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+    }
+
+    .btn.primary {
+      color: #05131c;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 12px 28px rgba(156, 188, 255, 0.18);
+    }
+
+    .btn.warm {
+      background: rgba(255, 203, 107, 0.12);
+      border-color: rgba(255, 203, 107, 0.24);
+      color: #ffe3a6;
+    }
+
+    .folder-list,
+    .meta-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .folder-btn {
+      border-radius: 18px;
+      text-align: left;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .folder-btn.active,
+    .chip.active {
+      background: rgba(156, 188, 255, 0.14);
+      border-color: var(--line-strong);
+    }
+
+    .folder-name {
+      font-weight: 700;
+    }
+
+    .folder-count {
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .gallery-panel {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .search {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(132, 180, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      outline: none;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .tile {
+      overflow: hidden;
+      border-radius: 22px;
+      border: 1px solid rgba(180, 203, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.14);
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+      animation: fadeUp 360ms ease;
+    }
+
+    .tile:hover {
+      box-shadow: 0 22px 46px rgba(0, 0, 0, 0.18);
+    }
+
+    .tile-button {
+      all: unset;
+      display: block;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .thumb {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      background: rgba(255, 255, 255, 0.03);
+      overflow: hidden;
+    }
+
+    .thumb img,
+    .thumb video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #050a12;
+    }
+
+    .badge {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(5, 10, 18, 0.74);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .folder-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tile-info {
+      padding: 12px 14px 14px;
+    }
+
+    .tile-title {
+      display: block;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tile-sub {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .empty {
+      padding: 22px;
+      border-radius: 20px;
+      border: 1px dashed rgba(132, 180, 255, 0.2);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .meta-card {
+      padding: 15px;
+      border-radius: 20px;
+      border: 1px solid rgba(132, 180, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .meta-label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+
+    .meta-title {
+      font-size: 32px;
+      font-weight: 900;
+    }
+
+    .modal,
+    .viewer {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(2, 6, 12, 0.74);
+      backdrop-filter: blur(14px);
+      z-index: 50;
+    }
+
+    .modal.open,
+    .viewer.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: min(760px, 100%);
+      max-height: 88vh;
+      overflow: auto;
+      padding: 22px;
+      border-radius: 28px;
+      background: rgba(10, 16, 28, 0.98);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .modal-card h3 {
+      margin: 0;
+      font-size: 28px;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .modal-card p {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .picker-toolbar {
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .toggle-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-line input {
+      width: 18px;
+      height: 18px;
+      accent-color: #9cbcff;
+    }
+
+    .picker-summary {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .modal-label {
+      display: block;
+      margin: 16px 0 8px;
+      font-weight: 700;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(132, 180, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      outline: none;
+    }
+
+    .picker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .pick-card {
+      position: relative;
+      padding: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(132, 180, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+
+    .pick-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(132, 180, 255, 0.28);
+    }
+
+    .pick-card.selected {
+      border-color: rgba(115, 223, 207, 0.95);
+      background: linear-gradient(180deg, rgba(115, 223, 207, 0.18), rgba(103, 185, 255, 0.1));
+      box-shadow: 0 0 0 1px rgba(115, 223, 207, 0.28), 0 16px 36px rgba(0, 0, 0, 0.2);
+    }
+
+    .pick-card img,
+    .pick-card video {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      border-radius: 14px;
+      background: #050a12;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .pick-card-name {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      word-break: break-word;
+      pointer-events: none;
+    }
+
+    .pick-card.selected .pick-card-name {
+      color: var(--text);
+    }
+
+    .pick-card-meta {
+      display: block;
+      margin-top: 6px;
+      color: #7fa3c8;
+      font-size: 12px;
+      line-height: 1.35;
+      pointer-events: none;
+      min-height: 16px;
+    }
+
+    .pick-card.locked {
+      opacity: 0.72;
+    }
+
+    .pick-check {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(5, 10, 18, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: transparent;
+      font-size: 16px;
+      font-weight: 900;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      pointer-events: none;
+    }
+
+    .pick-card.selected .pick-check {
+      color: #06211c;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-color: rgba(115, 223, 207, 0.95);
+    }
+
+    .pick-input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .viewer-card {
+      width: min(96vw, 1440px);
+      height: min(92vh, 980px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background: rgba(5, 9, 18, 0.98);
+      box-shadow: var(--shadow);
+    }
+
+    .viewer-top,
+    .viewer-bottom {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .viewer-title strong,
+    .viewer-title span {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .viewer-title span {
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 13px;
+    }
+
+    .viewer-stage {
+      position: relative;
+      overflow: hidden;
+      touch-action: none;
+      background:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.02) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.02) 75%),
+        linear-gradient(45deg, rgba(255, 255, 255, 0.02) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.02) 75%),
+        #040913;
+      background-size: 28px 28px;
+      background-position: 0 0, 14px 14px;
+    }
+
+    .viewer-stage img,
+    .viewer-stage video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform-origin: center center;
+      box-shadow: 0 20px 44px rgba(0, 0, 0, 0.34);
+      background: #03060d;
+      max-width: none;
+      max-height: none;
+    }
+
+    .viewer-stage video {
+      max-width: 100%;
+      max-height: 100%;
+      transform: translate(-50%, -50%);
+    }
+
+    .toast-wrap {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 60;
+      pointer-events: none;
+    }
+
+    .toast {
+      min-width: 240px;
+      max-width: 340px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(10, 16, 28, 0.94);
+      border: 1px solid rgba(132, 180, 255, 0.14);
+      box-shadow: var(--shadow);
+    }
+
+    .toast strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (max-width: 1200px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar,
+      .rightbar {
+        position: static;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app {
+        padding: 12px;
+        gap: 12px;
+      }
+
+      .hero,
+      .sidebar,
+      .rightbar,
+      .gallery-panel {
+        padding: 16px;
+      }
+
+      .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      }
+
+      .viewer-card {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel sidebar">
+      <section class="brand">
+        <h1>Media<br />Vault</h1>
+        <p>Один раз выбираешь папку `images` или любую другую с фото и видео, а сайт ее запоминает и пытается открыть снова автоматически.</p>
+      </section>
+
+      <section>
+        <h2 class="section-title">Папки</h2>
+        <div class="actions" style="margin-bottom: 12px;">
+          <button class="btn primary" id="createFolderBtn">Создать папку</button>
+          <button class="btn" id="editFolderBtn">Редактировать</button>
+          <button class="btn warm" id="deleteFolderBtn">Удалить</button>
+        </div>
+        <div class="folder-list" id="folderList"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="panel hero">
+        <div>
+          <h2>Без сервера, только папка</h2>
+          <p>Ограничение браузера такое: без разрешения он не может сам прочитать соседнюю `images`. Поэтому здесь сделан лучший вариант без сервера: выбираешь папку один раз, дальше сайт ее запоминает. Фото можно увеличивать двойным кликом и щепоткой, видео открываются во встроенном плеере.</p>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="pickFolderBtn">Выбрать папку</button>
+          <button class="btn" id="reloadBtn">Обновить media</button>
+        </div>
+      </section>
+
+      <section class="panel gallery-panel">
+        <div class="chips">
+          <button class="chip active" data-view="all">Все</button>
+          <button class="chip" data-view="assigned">Только в папках</button>
+          <button class="chip" data-view="unassigned">Без папки</button>
+          <button class="chip" data-view="image">Только фото</button>
+          <button class="chip" data-view="video">Только видео</button>
+        </div>
+        <input class="search" id="searchInput" type="search" placeholder="Поиск по имени файла..." />
+        <div class="gallery" id="gallery"></div>
+        <div class="empty" id="emptyState" hidden>Выбери папку `images` или любую другую папку с фото и видео.</div>
+      </section>
+    </main>
+
+    <aside class="panel rightbar">
+      <section>
+        <h2 class="section-title">Статистика</h2>
+        <div class="meta-list">
+          <div class="meta-card">
+            <span class="meta-label">Всего файлов</span>
+            <div class="meta-title" id="totalCount">0</div>
+          </div>
+          <div class="meta-card">
+            <span class="meta-label">В текущем виде</span>
+            <div class="meta-title" id="currentCount">0</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">Текущая папка</h2>
+        <div class="meta-list">
+          <div class="meta-card">
+            <span class="meta-label">Название</span>
+            <div class="meta-value" id="currentFolderName">Все media</div>
+          </div>
+          <div class="meta-card">
+            <span class="meta-label">Источник</span>
+            <div class="meta-value" id="sourceName">Папка не выбрана</div>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <input id="folderInput" type="file" webkitdirectory directory multiple hidden accept="image/*,video/*" />
+
+  <div class="modal" id="folderModal">
+    <div class="modal-card">
+      <h3 id="modalTitle">Создать папку</h3>
+      <p id="modalText">Введи название и отметь, какие файлы должны лежать в этой папке.</p>
+      <label class="modal-label" for="folderNameInput">Название</label>
+      <input class="modal-input" id="folderNameInput" type="text" maxlength="60" placeholder="Например: Лучшее, Видео, Личное" />
+      <div class="picker-toolbar">
+        <label class="toggle-line">
+          <input id="showAllPickerToggle" type="checkbox" />
+          <span>Показывать файлы из других папок</span>
+        </label>
+        <span class="picker-summary" id="pickerSummary">Выбрано: 0</span>
+      </div>
+      <div class="picker-grid" id="pickerGrid"></div>
+      <div class="modal-actions">
+        <button class="btn" id="cancelFolderBtn">Отмена</button>
+        <button class="btn primary" id="saveFolderBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="viewer" id="viewer">
+    <div class="viewer-card">
+      <div class="viewer-top">
+        <div class="viewer-title">
+          <strong id="viewerName">Файл</strong>
+          <span id="viewerMeta">0 x 0</span>
+        </div>
+        <div class="viewer-actions">
+          <button class="btn" id="zoomOutBtn">-</button>
+          <button class="btn" id="zoomResetBtn">100%</button>
+          <button class="btn" id="zoomInBtn">+</button>
+          <button class="btn" id="downloadBtn">Скачать</button>
+          <button class="btn warm" id="closeViewerBtn">Закрыть</button>
+        </div>
+      </div>
+      <div class="viewer-stage" id="viewerStage">
+        <img id="viewerImage" alt="" hidden />
+        <video id="viewerVideo" controls playsinline hidden></video>
+      </div>
+      <div class="viewer-bottom">
+        <div class="viewer-nav">
+          <button class="btn" id="prevBtn">Предыдущее</button>
+          <button class="btn" id="nextBtn">Следующее</button>
+        </div>
+        <span id="viewerHint">Двойной клик и щепотка работают для изображений.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <script>
+    const STORAGE_KEY = "media-vault-folders-v3";
+    const DB_NAME = "media-vault-db";
+    const DB_STORE = "handles";
+    const HANDLE_KEY = "media-folder-handle";
+    const MEDIA_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "avif", "mp4", "webm", "mov", "m4v", "ogg"]);
+    const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov", "m4v", "ogg"]);
+
+    const state = {
+      items: [],
+      folders: [],
+      selectedFolderId: "all",
+      view: "all",
+      search: "",
+      filtered: [],
+      modalMode: "create",
+      editingFolderId: null,
+      viewerIndex: -1,
+      directoryHandle: null,
+      sourceName: "",
+      pickerShowAll: false
+    };
+
+    const viewerState = {
+      scale: 1,
+      minScale: 1,
+      maxScale: 8,
+      offsetX: 0,
+      offsetY: 0,
+      naturalWidth: 0,
+      naturalHeight: 0,
+      baseFitScale: 1,
+      dragging: false,
+      lastX: 0,
+      lastY: 0,
+      pointers: new Map(),
+      pinchStartDistance: 0,
+      pinchStartScale: 1,
+      pinchStartOffsetX: 0,
+      pinchStartOffsetY: 0
+    };
+
+    const ui = {
+      folderList: document.getElementById("folderList"),
+      gallery: document.getElementById("gallery"),
+      emptyState: document.getElementById("emptyState"),
+      totalCount: document.getElementById("totalCount"),
+      currentCount: document.getElementById("currentCount"),
+      currentFolderName: document.getElementById("currentFolderName"),
+      sourceName: document.getElementById("sourceName"),
+      searchInput: document.getElementById("searchInput"),
+      folderModal: document.getElementById("folderModal"),
+      modalTitle: document.getElementById("modalTitle"),
+      modalText: document.getElementById("modalText"),
+      folderNameInput: document.getElementById("folderNameInput"),
+      showAllPickerToggle: document.getElementById("showAllPickerToggle"),
+      pickerSummary: document.getElementById("pickerSummary"),
+      pickerGrid: document.getElementById("pickerGrid"),
+      viewer: document.getElementById("viewer"),
+      viewerStage: document.getElementById("viewerStage"),
+      viewerImage: document.getElementById("viewerImage"),
+      viewerVideo: document.getElementById("viewerVideo"),
+      viewerName: document.getElementById("viewerName"),
+      viewerMeta: document.getElementById("viewerMeta"),
+      viewerHint: document.getElementById("viewerHint"),
+      toastWrap: document.getElementById("toastWrap"),
+      folderInput: document.getElementById("folderInput")
+    };
+
+    init();
+
+    async function init() {
+      restoreState();
+      bindEvents();
+      renderAll();
+      await restoreDirectoryHandle();
+      await reloadMedia();
+    }
+
+    function bindEvents() {
+      document.getElementById("pickFolderBtn").addEventListener("click", pickFolder);
+      document.getElementById("reloadBtn").addEventListener("click", reloadMedia);
+      ui.folderInput.addEventListener("change", onFolderInputChange);
+
+      document.getElementById("createFolderBtn").addEventListener("click", () => openFolderModal("create"));
+      document.getElementById("editFolderBtn").addEventListener("click", () => {
+        if (state.selectedFolderId === "all") {
+          toast("Сначала выбери папку", "Нужно выбрать одну из созданных папок слева.");
+          return;
+        }
+        openFolderModal("edit", state.selectedFolderId);
+      });
+
+      document.getElementById("deleteFolderBtn").addEventListener("click", deleteCurrentFolder);
+      document.getElementById("cancelFolderBtn").addEventListener("click", closeFolderModal);
+      document.getElementById("saveFolderBtn").addEventListener("click", saveFolder);
+      ui.showAllPickerToggle.addEventListener("change", (event) => {
+        state.pickerShowAll = event.target.checked;
+        const currentSelected = Array.from(ui.pickerGrid.querySelectorAll(".pick-input:checked")).map((node) => node.value);
+        renderPicker(currentSelected);
+      });
+
+      document.querySelectorAll("[data-view]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.view = button.dataset.view;
+          document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("active", item === button));
+          renderGallery();
+          saveState();
+        });
+      });
+
+      ui.searchInput.addEventListener("input", (event) => {
+        state.search = event.target.value.trim().toLowerCase();
+        renderGallery();
+        saveState();
+      });
+
+      ui.folderModal.addEventListener("click", (event) => {
+        if (event.target === ui.folderModal) closeFolderModal();
+      });
+
+      ui.viewer.addEventListener("click", (event) => {
+        if (event.target === ui.viewer) closeViewer();
+      });
+
+      document.getElementById("closeViewerBtn").addEventListener("click", closeViewer);
+      document.getElementById("prevBtn").addEventListener("click", () => stepViewer(-1));
+      document.getElementById("nextBtn").addEventListener("click", () => stepViewer(1));
+      document.getElementById("downloadBtn").addEventListener("click", downloadCurrent);
+      document.getElementById("zoomInBtn").addEventListener("click", () => setScale(viewerState.scale * 1.2));
+      document.getElementById("zoomOutBtn").addEventListener("click", () => setScale(viewerState.scale / 1.2));
+      document.getElementById("zoomResetBtn").addEventListener("click", resetTransform);
+
+      ui.viewerStage.addEventListener("dblclick", handleDoubleClick);
+      ui.viewerStage.addEventListener("wheel", handleWheel, { passive: false });
+      ui.viewerStage.addEventListener("pointerdown", handlePointerDown);
+      ui.viewerStage.addEventListener("pointermove", handlePointerMove);
+      ui.viewerStage.addEventListener("pointerup", handlePointerUp);
+      ui.viewerStage.addEventListener("pointercancel", handlePointerUp);
+      ui.viewerStage.addEventListener("pointerleave", handlePointerUp);
+
+      window.addEventListener("resize", () => {
+        const current = state.filtered[state.viewerIndex];
+        if (current && current.kind === "image") fitImage();
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (ui.viewer.classList.contains("open")) {
+          if (event.key === "Escape") closeViewer();
+          if (event.key === "ArrowRight") stepViewer(1);
+          if (event.key === "ArrowLeft") stepViewer(-1);
+        } else if (ui.folderModal.classList.contains("open") && event.key === "Escape") {
+          closeFolderModal();
+        }
+      });
+    }
+
+    function restoreState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        state.folders = Array.isArray(saved.folders) ? saved.folders : [];
+        state.selectedFolderId = saved.selectedFolderId || "all";
+        state.view = saved.view || "all";
+        state.search = saved.search || "";
+        state.sourceName = saved.sourceName || "";
+        ui.searchInput.value = state.search;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        folders: state.folders,
+        selectedFolderId: state.selectedFolderId,
+        view: state.view,
+        search: state.search,
+        sourceName: state.sourceName
+      }));
+    }
+
+    async function pickFolder() {
+      if ("showDirectoryPicker" in window) {
+        try {
+          const handle = await window.showDirectoryPicker({ mode: "read" });
+          await loadFromDirectoryHandle(handle, true);
+          toast("Папка подключена", `Открыта папка "${handle.name}".`);
+          return;
+        } catch (error) {
+          if (error && error.name !== "AbortError") console.error(error);
+        }
+      }
+
+      ui.folderInput.click();
+    }
+
+    async function reloadMedia() {
+      if (state.directoryHandle) {
+        try {
+          await loadFromDirectoryHandle(state.directoryHandle, false);
+          toast("Готово", `Найдено ${state.items.length} файлов.`);
+          return;
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      if (state.items.length === 0) {
+        toast("Нужна папка", "Нажми 'Выбрать папку' и укажи images или любую другую папку.");
+      } else {
+        toast("Нужно выбрать заново", "Если браузер потерял доступ, выбери папку еще раз.");
+      }
+    }
+
+    async function loadFromDirectoryHandle(handle, remember) {
+      const permission = await handle.queryPermission({ mode: "read" });
+      let granted = permission;
+      if (permission !== "granted") {
+        granted = await handle.requestPermission({ mode: "read" });
+      }
+
+      if (granted !== "granted") {
+        toast("Нет доступа", "Без разрешения браузера папку открыть нельзя.");
+        return;
+      }
+
+      revokeItemUrls();
+      const entries = await collectMediaEntries(handle);
+      state.items = await Promise.all(entries.map(fileEntryToItem));
+      state.directoryHandle = handle;
+      state.sourceName = handle.name || "Выбранная папка";
+      cleanupFolders();
+      renderAll();
+      saveState();
+
+      if (remember) {
+        await saveDirectoryHandle(handle);
+      }
+    }
+
+    async function collectMediaEntries(dirHandle, base = "") {
+      const items = [];
+      for await (const entry of dirHandle.values()) {
+        const relativePath = base ? `${base}/${entry.name}` : entry.name;
+        if (entry.kind === "directory") {
+          items.push(...await collectMediaEntries(entry, relativePath));
+          continue;
+        }
+        const ext = entry.name.includes(".") ? entry.name.split(".").pop().toLowerCase() : "";
+        if (!MEDIA_EXTENSIONS.has(ext)) continue;
+        items.push({ handle: entry, relativePath });
+      }
+      return items.sort((a, b) => a.relativePath.localeCompare(b.relativePath, "ru"));
+    }
+
+    async function fileEntryToItem(entry) {
+      const file = await entry.handle.getFile();
+      const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+      return {
+        id: `${entry.relativePath}__${file.size}__${file.lastModified}`,
+        name: file.name,
+        relativePath: entry.relativePath,
+        url: URL.createObjectURL(file),
+        size: file.size,
+        kind: VIDEO_EXTENSIONS.has(ext) ? "video" : "image"
+      };
+    }
+
+    function onFolderInputChange(event) {
+      const files = Array.from(event.target.files || []);
+      revokeItemUrls();
+      state.directoryHandle = null;
+      state.items = files
+        .filter((file) => {
+          const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+          return MEDIA_EXTENSIONS.has(ext) || file.type.startsWith("image/") || file.type.startsWith("video/");
+        })
+        .map((file) => {
+          const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+          const relativePath = file.webkitRelativePath || file.name;
+          return {
+            id: `${relativePath}__${file.size}__${file.lastModified}`,
+            name: file.name,
+            relativePath,
+            url: URL.createObjectURL(file),
+            size: file.size,
+            kind: VIDEO_EXTENSIONS.has(ext) || file.type.startsWith("video/") ? "video" : "image"
+          };
+        })
+        .sort((a, b) => a.relativePath.localeCompare(b.relativePath, "ru"));
+
+      state.sourceName = files[0]?.webkitRelativePath?.split("/")[0] || "Выбранная папка";
+      cleanupFolders();
+      renderAll();
+      saveState();
+      toast("Папка загружена", `Найдено ${state.items.length} файлов.`);
+      event.target.value = "";
+    }
+
+    function cleanupFolders() {
+      const validIds = new Set(state.items.map((item) => item.id));
+      state.folders = state.folders.map((folder) => ({
+        ...folder,
+        itemIds: Array.isArray(folder.itemIds) ? folder.itemIds.filter((id) => validIds.has(id)) : []
+      }));
+
+      if (state.selectedFolderId !== "all" && !state.folders.some((folder) => folder.id === state.selectedFolderId)) {
+        state.selectedFolderId = "all";
+      }
+
+      saveState();
+    }
+
+    function renderAll() {
+      renderFolders();
+      renderGallery();
+      syncStats();
+      document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("active", item.dataset.view === state.view));
+    }
+
+    function renderFolders() {
+      const sortedFolders = state.folders
+        .slice()
+        .sort((a, b) => b.itemIds.length - a.itemIds.length || a.name.localeCompare(b.name, "ru"));
+
+      const entries = [{ id: "all", name: "Все media", count: state.items.length }, ...sortedFolders.map((folder) => ({
+        id: folder.id,
+        name: folder.name,
+        count: folder.itemIds.length
+      }))];
+
+      ui.folderList.innerHTML = "";
+      entries.forEach((entry) => {
+        const button = document.createElement("button");
+        button.className = "folder-btn";
+        button.classList.toggle("active", entry.id === state.selectedFolderId);
+        button.innerHTML = `<span class="folder-name">${escapeHtml(entry.name)}</span><span class="folder-count">${entry.count}</span>`;
+        button.addEventListener("click", () => {
+          state.selectedFolderId = entry.id;
+          renderAll();
+          saveState();
+        });
+        ui.folderList.appendChild(button);
+      });
+    }
+
+    function getVisibleItems() {
+      let items = state.items.slice();
+
+      if (state.selectedFolderId !== "all") {
+        const folder = state.folders.find((item) => item.id === state.selectedFolderId);
+        const ids = new Set(folder ? folder.itemIds : []);
+        items = items.filter((item) => ids.has(item.id));
+      }
+
+      if (state.view === "assigned") {
+        const ids = new Set(state.folders.flatMap((folder) => folder.itemIds));
+        items = items.filter((item) => ids.has(item.id));
+      }
+
+      if (state.view === "unassigned") {
+        const ids = new Set(state.folders.flatMap((folder) => folder.itemIds));
+        items = items.filter((item) => !ids.has(item.id));
+      }
+
+      if (state.view === "image") {
+        items = items.filter((item) => item.kind === "image");
+      }
+
+      if (state.view === "video") {
+        items = items.filter((item) => item.kind === "video");
+      }
+
+      if (state.search) {
+        items = items.filter((item) => item.name.toLowerCase().includes(state.search) || item.relativePath.toLowerCase().includes(state.search));
+      }
+
+      return items.sort((a, b) => b.size - a.size || a.name.localeCompare(b.name, "ru"));
+    }
+
+    function renderGallery() {
+      const items = getVisibleItems();
+      state.filtered = items;
+      ui.gallery.innerHTML = "";
+
+      const empty = state.items.length === 0 || items.length === 0;
+      ui.gallery.hidden = empty;
+      ui.emptyState.hidden = !empty;
+
+      if (state.items.length === 0) {
+        ui.emptyState.textContent = "Выбери папку images или любую другую папку с фото и видео.";
+        syncStats();
+        return;
+      }
+
+      if (items.length === 0) {
+        ui.emptyState.textContent = "По текущим фильтрам ничего не найдено.";
+        syncStats();
+        return;
+      }
+
+      items.forEach((item, index) => {
+        const folderNames = state.folders.filter((folder) => folder.itemIds.includes(item.id)).map((folder) => folder.name).join(", ") || "Без папки";
+        const tile = document.createElement("article");
+        tile.className = "tile";
+        tile.innerHTML = `
+          <button class="tile-button" type="button" aria-label="${escapeHtml(item.name)}">
+            <div class="thumb">
+              ${item.kind === "image"
+                ? `<img src="${item.url}" alt="${escapeHtml(item.name)}" loading="lazy" />`
+                : `<video src="${item.url}" muted preload="metadata"></video>`}
+              <span class="badge">${item.kind === "image" ? "Фото" : "Видео"}</span>
+            </div>
+            <div class="tile-info">
+              <span class="tile-title">${escapeHtml(item.name)}</span>
+              <span class="tile-sub">${escapeHtml(folderNames)}</span>
+            </div>
+          </button>
+        `;
+        tile.querySelector("button").addEventListener("click", () => openViewer(index));
+        ui.gallery.appendChild(tile);
+      });
+
+      syncStats();
+    }
+
+    function syncStats() {
+      const currentFolder = state.selectedFolderId === "all" ? { name: "Все media" } : state.folders.find((folder) => folder.id === state.selectedFolderId);
+      ui.totalCount.textContent = String(state.items.length);
+      ui.currentCount.textContent = String(state.filtered.length);
+      ui.currentFolderName.textContent = currentFolder ? currentFolder.name : "Все media";
+      ui.sourceName.textContent = state.sourceName || "Папка не выбрана";
+    }
+
+    function openFolderModal(mode, folderId = null) {
+      if (state.items.length === 0) {
+        toast("Пока пусто", "Сначала пусть сайт загрузит файлы из выбранной папки.");
+        return;
+      }
+
+      state.modalMode = mode;
+      state.editingFolderId = folderId;
+      state.pickerShowAll = false;
+      ui.showAllPickerToggle.checked = false;
+
+      if (mode === "edit") {
+        const folder = state.folders.find((item) => item.id === folderId);
+        if (!folder) return;
+        ui.modalTitle.textContent = "Редактировать папку";
+        ui.modalText.textContent = "Переименуй папку и измени состав файлов.";
+        ui.folderNameInput.value = folder.name;
+        renderPicker(folder.itemIds);
+      } else {
+        ui.modalTitle.textContent = "Создать папку";
+        ui.modalText.textContent = "Введи название и выбери, какие файлы туда положить.";
+        ui.folderNameInput.value = "";
+        renderPicker([]);
+      }
+
+      ui.folderModal.classList.add("open");
+      requestAnimationFrame(() => ui.folderNameInput.focus());
+    }
+
+    function closeFolderModal() {
+      ui.folderModal.classList.remove("open");
+      state.editingFolderId = null;
+    }
+
+    function renderPicker(selectedIds) {
+      const selected = new Set(selectedIds);
+      ui.pickerGrid.innerHTML = "";
+      const currentFolderId = state.modalMode === "edit" ? state.editingFolderId : null;
+
+      const items = state.items.filter((item) => {
+        const owners = getItemFolderNames(item.id, currentFolderId);
+        return state.pickerShowAll || owners.length === 0 || selected.has(item.id);
+      });
+
+      items
+        .sort((a, b) => b.size - a.size || a.name.localeCompare(b.name, "ru"))
+        .forEach((item) => {
+        const owners = getItemFolderNames(item.id, currentFolderId);
+        const card = document.createElement("div");
+        card.className = "pick-card";
+        card.classList.toggle("selected", selected.has(item.id));
+        card.classList.toggle("locked", owners.length > 0 && !selected.has(item.id));
+        card.innerHTML = `
+          <input class="pick-input" type="checkbox" value="${escapeHtml(item.id)}" ${selected.has(item.id) ? "checked" : ""} />
+          ${item.kind === "image"
+            ? `<img src="${item.url}" alt="${escapeHtml(item.name)}" loading="lazy" draggable="false" />`
+            : `<video src="${item.url}" muted preload="metadata" draggable="false"></video>`}
+          <span class="pick-check">✓</span>
+          <span class="pick-card-name">${escapeHtml(item.name)}</span>
+          <span class="pick-card-meta">${escapeHtml(owners.length ? `Уже в: ${owners.join(", ")}` : "Свободно")}</span>
+        `;
+        card.addEventListener("dragstart", (event) => event.preventDefault());
+        card.addEventListener("click", () => {
+          const input = card.querySelector(".pick-input");
+          input.checked = !input.checked;
+          card.classList.toggle("selected", input.checked);
+          syncPickerSummary();
+        });
+        ui.pickerGrid.appendChild(card);
+      });
+
+      syncPickerSummary();
+    }
+
+    function saveFolder() {
+      const name = ui.folderNameInput.value.trim();
+      if (!name) {
+        toast("Нужно название", "Введи имя папки.");
+        return;
+      }
+
+      const itemIds = Array.from(ui.pickerGrid.querySelectorAll('input[type="checkbox"]:checked')).map((node) => node.value);
+
+      if (state.modalMode === "edit" && state.editingFolderId) {
+        const folder = state.folders.find((item) => item.id === state.editingFolderId);
+        if (!folder) return;
+        folder.name = name;
+        folder.itemIds = itemIds;
+      } else {
+        state.folders.unshift({
+          id: `folder-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          name,
+          itemIds
+        });
+      }
+
+      closeFolderModal();
+      renderAll();
+      saveState();
+      toast("Сохранено", `Папка "${name}" обновлена.`);
+    }
+
+    function getItemFolderNames(itemId, ignoredFolderId = null) {
+      return state.folders
+        .filter((folder) => folder.id !== ignoredFolderId && folder.itemIds.includes(itemId))
+        .map((folder) => folder.name);
+    }
+
+    function syncPickerSummary() {
+      const checked = ui.pickerGrid.querySelectorAll(".pick-input:checked").length;
+      const visible = ui.pickerGrid.querySelectorAll(".pick-card").length;
+      ui.pickerSummary.textContent = `Выбрано: ${checked} • видно: ${visible}`;
+    }
+
+    function deleteCurrentFolder() {
+      if (state.selectedFolderId === "all") {
+        toast("Нельзя удалить", "Папка 'Все media' системная.");
+        return;
+      }
+
+      const folder = state.folders.find((item) => item.id === state.selectedFolderId);
+      if (!folder) return;
+      state.folders = state.folders.filter((item) => item.id !== folder.id);
+      state.selectedFolderId = "all";
+      renderAll();
+      saveState();
+      toast("Удалено", `Папка "${folder.name}" удалена.`);
+    }
+
+    function openViewer(index) {
+      if (!state.filtered[index]) return;
+      state.viewerIndex = index;
+      ui.viewer.classList.add("open");
+      loadViewerItem(state.filtered[index]);
+    }
+
+    function closeViewer() {
+      ui.viewer.classList.remove("open");
+      ui.viewerVideo.pause();
+      ui.viewerVideo.removeAttribute("src");
+      ui.viewerVideo.load();
+      ui.viewerImage.src = "";
+      viewerState.pointers.clear();
+      viewerState.dragging = false;
+    }
+
+    function stepViewer(direction) {
+      if (!state.filtered.length) return;
+      state.viewerIndex = (state.viewerIndex + direction + state.filtered.length) % state.filtered.length;
+      loadViewerItem(state.filtered[state.viewerIndex]);
+    }
+
+    function loadViewerItem(item) {
+      ui.viewerName.textContent = item.name;
+      ui.viewerMeta.textContent = `${item.kind === "image" ? "Фото" : "Видео"} • ${formatBytes(item.size)}`;
+
+      if (item.kind === "video") {
+        ui.viewerImage.hidden = true;
+        ui.viewerVideo.hidden = false;
+        ui.viewerVideo.src = item.url;
+        ui.viewerVideo.load();
+        ui.viewerHint.textContent = "Видео открывается во встроенном плеере.";
+        document.getElementById("zoomInBtn").disabled = true;
+        document.getElementById("zoomOutBtn").disabled = true;
+        document.getElementById("zoomResetBtn").disabled = true;
+        return;
+      }
+
+      document.getElementById("zoomInBtn").disabled = false;
+      document.getElementById("zoomOutBtn").disabled = false;
+      document.getElementById("zoomResetBtn").disabled = false;
+      ui.viewerHint.textContent = "Двойной клик, колесо и щепотка работают для изображений.";
+      ui.viewerVideo.pause();
+      ui.viewerVideo.hidden = true;
+      ui.viewerVideo.removeAttribute("src");
+      ui.viewerVideo.load();
+      ui.viewerImage.hidden = false;
+      ui.viewerImage.onload = () => {
+        viewerState.naturalWidth = ui.viewerImage.naturalWidth || 0;
+        viewerState.naturalHeight = ui.viewerImage.naturalHeight || 0;
+        ui.viewerMeta.textContent = `${viewerState.naturalWidth} x ${viewerState.naturalHeight} • ${formatBytes(item.size)}`;
+        fitImage();
+      };
+      ui.viewerImage.src = item.url;
+      ui.viewerImage.alt = item.name;
+    }
+
+    function fitImage() {
+      const rect = ui.viewerStage.getBoundingClientRect();
+      const maxWidth = Math.max(80, rect.width - 60);
+      const maxHeight = Math.max(80, rect.height - 60);
+      const widthRatio = maxWidth / viewerState.naturalWidth;
+      const heightRatio = maxHeight / viewerState.naturalHeight;
+      viewerState.baseFitScale = Math.min(widthRatio, heightRatio, 1);
+      viewerState.minScale = viewerState.baseFitScale;
+      viewerState.scale = viewerState.baseFitScale;
+      viewerState.offsetX = 0;
+      viewerState.offsetY = 0;
+      applyTransform();
+    }
+
+    function resetTransform() {
+      const current = state.filtered[state.viewerIndex];
+      if (!current || current.kind !== "image") return;
+      viewerState.scale = viewerState.baseFitScale;
+      viewerState.offsetX = 0;
+      viewerState.offsetY = 0;
+      applyTransform();
+    }
+
+    function setScale(nextScale, centerX = ui.viewerStage.clientWidth / 2, centerY = ui.viewerStage.clientHeight / 2) {
+      const current = state.filtered[state.viewerIndex];
+      if (!current || current.kind !== "image") return;
+      const clamped = clamp(nextScale, viewerState.minScale, viewerState.maxScale);
+      const prev = viewerState.scale;
+      if (!prev || clamped === prev) {
+        viewerState.scale = clamped;
+        applyTransform();
+        return;
+      }
+      const dx = centerX - ui.viewerStage.clientWidth / 2;
+      const dy = centerY - ui.viewerStage.clientHeight / 2;
+      const ratio = clamped / prev;
+      viewerState.offsetX = dx - (dx - viewerState.offsetX) * ratio;
+      viewerState.offsetY = dy - (dy - viewerState.offsetY) * ratio;
+      viewerState.scale = clamped;
+      applyTransform();
+    }
+
+    function applyTransform() {
+      const width = viewerState.naturalWidth * viewerState.scale;
+      const height = viewerState.naturalHeight * viewerState.scale;
+      const maxX = Math.max(0, (width - ui.viewerStage.clientWidth) / 2);
+      const maxY = Math.max(0, (height - ui.viewerStage.clientHeight) / 2);
+      viewerState.offsetX = clamp(viewerState.offsetX, -maxX, maxX);
+      viewerState.offsetY = clamp(viewerState.offsetY, -maxY, maxY);
+      ui.viewerImage.style.transform = `translate(calc(-50% + ${viewerState.offsetX}px), calc(-50% + ${viewerState.offsetY}px)) scale(${viewerState.scale})`;
+    }
+
+    function handleDoubleClick(event) {
+      const current = state.filtered[state.viewerIndex];
+      if (!current || current.kind !== "image") return;
+      const rect = ui.viewerStage.getBoundingClientRect();
+      const scale = viewerState.scale > viewerState.baseFitScale * 1.4 ? viewerState.baseFitScale : Math.min(viewerState.baseFitScale * 2.5, viewerState.maxScale);
+      setScale(scale, event.clientX - rect.left, event.clientY - rect.top);
+    }
+
+    function handleWheel(event) {
+      const current = state.filtered[state.viewerIndex];
+      if (!current || current.kind !== "image") return;
+      event.preventDefault();
+      const rect = ui.viewerStage.getBoundingClientRect();
+      const multiplier = event.deltaY < 0 ? 1.12 : 0.88;
+      setScale(viewerState.scale * multiplier, event.clientX - rect.left, event.clientY - rect.top);
+    }
+
+    function handlePointerDown(event) {
+      const current = state.filtered[state.viewerIndex];
+      if (!current || current.kind !== "image") return;
+      ui.viewerStage.setPointerCapture(event.pointerId);
+      viewerState.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (viewerState.pointers.size === 1) {
+        viewerState.dragging = true;
+        viewerState.lastX = event.clientX;
+        viewerState.lastY = event.clientY;
+      }
+
+      if (viewerState.pointers.size === 2) {
+        const [a, b] = Array.from(viewerState.pointers.values());
+        viewerState.pinchStartDistance = Math.hypot(a.x - b.x, a.y - b.y);
+        viewerState.pinchStartScale = viewerState.scale;
+        viewerState.pinchStartOffsetX = viewerState.offsetX;
+        viewerState.pinchStartOffsetY = viewerState.offsetY;
+      }
+    }
+
+    function handlePointerMove(event) {
+      if (!viewerState.pointers.has(event.pointerId)) return;
+      viewerState.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+      if (viewerState.pointers.size === 1 && viewerState.dragging && viewerState.scale > viewerState.baseFitScale) {
+        viewerState.offsetX += event.clientX - viewerState.lastX;
+        viewerState.offsetY += event.clientY - viewerState.lastY;
+        viewerState.lastX = event.clientX;
+        viewerState.lastY = event.clientY;
+        applyTransform();
+      }
+
+      if (viewerState.pointers.size === 2) {
+        const [a, b] = Array.from(viewerState.pointers.values());
+        const rect = ui.viewerStage.getBoundingClientRect();
+        const centerX = ((a.x + b.x) / 2) - rect.left;
+        const centerY = ((a.y + b.y) / 2) - rect.top;
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        const ratio = dist / Math.max(viewerState.pinchStartDistance, 1);
+        viewerState.offsetX = viewerState.pinchStartOffsetX;
+        viewerState.offsetY = viewerState.pinchStartOffsetY;
+        setScale(viewerState.pinchStartScale * ratio, centerX, centerY);
+      }
+    }
+
+    function handlePointerUp(event) {
+      viewerState.pointers.delete(event.pointerId);
+      if (viewerState.pointers.size === 0) viewerState.dragging = false;
+      if (viewerState.pointers.size < 2) viewerState.pinchStartDistance = 0;
+    }
+
+    function downloadCurrent() {
+      const item = state.filtered[state.viewerIndex];
+      if (!item) return;
+      const link = document.createElement("a");
+      link.href = item.url;
+      link.download = item.name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function revokeItemUrls() {
+      state.items.forEach((item) => {
+        if (item.url && item.url.startsWith("blob:")) URL.revokeObjectURL(item.url);
+      });
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} Б`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function toast(title, text) {
+      const node = document.createElement("div");
+      node.className = "toast";
+      node.innerHTML = `<strong>${escapeHtml(title)}</strong><div>${escapeHtml(text)}</div>`;
+      ui.toastWrap.appendChild(node);
+      setTimeout(() => node.remove(), 2600);
+    }
+
+    async function openDb() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore(DB_STORE);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function saveDirectoryHandle(handle) {
+      if (!("indexedDB" in window)) return;
+      try {
+        const db = await openDb();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, "readwrite");
+          tx.objectStore(DB_STORE).put(handle, HANDLE_KEY);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function restoreDirectoryHandle() {
+      if (!("indexedDB" in window) || !("showDirectoryPicker" in window)) return;
+      try {
+        const db = await openDb();
+        const handle = await new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, "readonly");
+          const request = tx.objectStore(DB_STORE).get(HANDLE_KEY);
+          request.onsuccess = () => resolve(request.result || null);
+          request.onerror = () => reject(request.error);
+        });
+        db.close();
+        if (handle) {
+          state.directoryHandle = handle;
+          state.sourceName = handle.name || state.sourceName;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>
